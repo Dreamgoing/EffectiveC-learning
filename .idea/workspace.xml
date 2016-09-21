@@ -12,7 +12,9 @@
     </ADDITIONAL_GENERATION_ENVIRONMENT>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d2366136-7076-40e6-bed9-c61ffae14292" name="Default" comment="" />
+    <list default="true" id="d2366136-7076-40e6-bed9-c61ffae14292" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+    </list>
     <ignored path="EffectiveC++learning.iws" />
     <ignored path=".idea/workspace.xml" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -68,7 +70,7 @@
     </leaf>
   </component>
   <component name="Git.Rebase.Settings">
-    <option name="ONTO" value="refs/remotes/origin/master" />
+    <option name="ONTO" value="refs/heads/master" />
   </component>
   <component name="Git.Settings">
     <option name="ROOT_SYNC" value="SYNC" />
@@ -318,7 +320,7 @@
       <workItem from="1474435437132" duration="3067000" />
       <workItem from="1474439433809" duration="1078000" />
       <workItem from="1474455721494" duration="425000" />
-      <workItem from="1474456273230" duration="87000" />
+      <workItem from="1474456273230" duration="250000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <created>1474439670985</created>
@@ -338,7 +340,7 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="4657000" />
+    <option name="totallyTimeSpent" value="4820000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1280" height="800" extended-state="6" />
