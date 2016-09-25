@@ -110,6 +110,175 @@ Boost开源库。
 相关代码同步 [github](https://github.com/Dreamgoing/EffectiveC-learning)
 欢迎关注互相交流学习。
 
+#Effective c++ 01 习惯于c++
+
+##1. c++是一个语言联邦
+
++ 多重范型编程语言（multiparadigm programming language）
++ 支持过程 (procedural)
++ 支持面向对象 (object-oriented)
++ 函数形式 (functional)
++ 泛型形式 (generic)
++ 元编程形式 (metaprogramming)
+
+##2. 尽量使用const,enum,inline 替换 #define
+
+这个的意思是，__尽可能多的让编译器替换预处理器__。因为预处理器会根据宏定义的内容，在源代码中直接盲目替换，有可能会导致未知的错误发生。
+
+``` c++
+const char* const author = "wangruoxuan";
+const std::string authorStr("wangruoxuan");
+
+class GamePlayer{
+private:
+    static const int numTurns = 5; // class 类中专属的常量。
+    int wins[numTurns];
+};
+```
+
+上图代码为两种字符串常量的定义，第二种更优。 __numTurns__ 为class GamePlayer 的专属常量，为了将常量的作用域( __scope__ ) 限制在class类，必须为class 的一个member；而为了确保此常量至多只有一份实体，声明该变量为 __static__ 成员。
+
+注意： 也可以用enum hack 替换上述实现。
+
+``` c++
+ enum {Num = 5};
+ int fail[Num];
+```
+--
+__用inline 替换宏定义的函数。__
+
+``` c++
+template <typename T>
+inline T callWithMax(const T& a,const T& b){
+    return a>b?a:b;
+}
+```
+
++ 对于单纯的常量用const enums 替换 #define
++ 对于形似函数的宏 (macros) ，最好使用 inline 函数替换 ＃defines.
+
+
+##3. 使用const
+
+###在声明常量时
+
++ const 修饰符用来修饰在不同作用域下的常量。例如class global namespace 等等。
++ const 可以用来指出指针或者所指的事物是不是const
+
+``` c++
+char greet[] = "hello";
+const char *p = greet; // non-const pointer ,const data
+char* const p1 = greet; // const pointer, non-const data
+const char*  const p2 = greet; // const pointer, const data
+```
+其中 const char * p 与 char const * p 相同。但是 __char* const p__ 与 
+__const char ＊p__ 不同。 前者为指针常量，后者为数据常量。
+
+--
+
+###在STL中const
+
+如果关键字const出现在星号左边，表示所指物是常量；如果出现在星号右边，表示指针自身是常量，如果在星号两边都出现了const则表示指针和指物都是常量。
+
+``` c++
+const std::vector<int>::iterator iter = vec.begin();  
+// T* const 可以改变iter所指的值，但是不能改变iter指针。
+std::vector<int>::const_iterator cIter = vec.begin(); 
+// const *T 不可改变cIter所指的值，但是可以改变iter的指针。
+
+```
+--
+###const 令函数返回一个常量值
+
+为了避免 （a*b）= c; 的情况发生。当然这样的错误应该避免。
+使用const 令重载的操作符返回一个const的值就避免了上述不必要的情况发生。
+
+``` c++
+class Rational{
+public:
+    const Rational operator*(const Rational& lhs,const Rational& rhs);
+};
+
+const Rational Rational::operator*(const Rational &lhs, const Rational &rhs) {
+    return Rational();
+}
+```
+
+--
+
+###const 成员函数
+ 
+将const 实施于成员函数的目的，是为了确认该成员函可以作用于const对象身上。基于两个理由：
+
++ 使const接口比较容易理解。得知哪个函数可以改动对象内容而哪个函数不行。
++ 使操作const对象成为可能。因为改善c++ 程序效率的一个根本办法是pass by reference-to-const
+
+``` c++
+class TextBlock{
+public:
+    static const int Num = 30;
+    char text[Num];
+public:
+    const char& operator[](std::size_t position) const;
+};
+
+const char &TextBlock::operator[](std::size_t position) const {
+    return text[Num];
+}
+```
+
+上面const成员函数的实现，是返回一个const值且text[] 成员在函数中__不可改变__。
+
+
+``` c++
+class TextBlock{
+public:
+    static const int Num = 30;
+    char text[Num];
+public:
+    char& operator[](std::size_t position) ;
+};
+
+char& TextBlock::operator[](std::size_t position)  {
+    text[position]++;
+    return text[position];
+}
+```
+
+此种实现，不同与前者，此种返回的值可以改变（reference to char实现），并且，成员变量的内容在重载操作符中的可以被改变。
+
+总结：const前置声明函数返回const值，后置声明保证了成员变量的稳定性，即在函数执行的过程中__不被改变__,这就是 __bitwise const__原则。
+
+--
+
+const 成员函数，保证了成员变量在函数实现中__不能改变__ ,但是有时候需要改变成员变量，此时用一个与const相关的 __mutable__(可变的) 修饰成员变量来实现。
+
+``` c++
+class CTextBlock{
+private:
+    char *pText;
+    mutable std::size_t textLength;
+    mutable bool lengthIsValid;
+public:
+    CTextBlock(char *pText);
+
+    std::size_t length() const;
+};
+
+std::size_t CTextBlock::length() const {
+    if(!lengthIsValid){
+        textLength = std::strlen(pText); //现在可以改变。
+        lengthIsValid = true;
+    }
+    return textLength;
+}
+
+CTextBlock::CTextBlock(char *pText) : pText(pText) {}
+
+```
+
+
+
 
 
 
