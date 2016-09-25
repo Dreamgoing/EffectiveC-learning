@@ -94,10 +94,36 @@ void test3(){
     cout<<t[0]<<endl;
 
 }
+class CTextBlock{
+private:
+    char *pText;
+    mutable std::size_t textLength;
+    mutable bool lengthIsValid;
+public:
+    CTextBlock(char *pText);
+
+    std::size_t length() const;
+};
+
+std::size_t CTextBlock::length() const {
+    if(!lengthIsValid){
+        textLength = std::strlen(pText); //现在可以改变。
+        lengthIsValid = true;
+    }
+    return textLength;
+}
+
+CTextBlock::CTextBlock(char *pText) : pText(pText) {}
+void text4(){
+    char s[] = "hello world";
+    CTextBlock a(s);
+    std::cout<<a.length()<<endl;
+}
 
 int main() {
     //test1();
-    test3();
+    //test3();
+    text4();
 
 
 
