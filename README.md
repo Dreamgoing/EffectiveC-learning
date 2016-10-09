@@ -260,22 +260,205 @@ private:
     mutable std::size_t textLength;
     mutable bool lengthIsValid;
 public:
+    char* getpText(){
+        return pText;
+    }
+    CTextBlock();
+
     CTextBlock(char *pText);
 
     std::size_t length() const;
 };
 
 std::size_t CTextBlock::length() const {
+    cout<<lengthIsValid<<endl;
     if(!lengthIsValid){
+        //cout<<"ok"<<endl;
         textLength = std::strlen(pText); //现在可以改变。
         lengthIsValid = true;
     }
     return textLength;
 }
 
-CTextBlock::CTextBlock(char *pText) : pText(pText) {}
+CTextBlock::CTextBlock(char *pText) : pText(pText) {
+    lengthIsValid = true; //成员变量初始化很重要，不然会出现奇怪的错误。
+    textLength = std::strlen(pText);
+}
+
+CTextBlock::CTextBlock() {
+    lengthIsValid = false;
+    textLength = 0;
+}
+
 
 ```
+
+__使用成员变量的时候确保已经初始化__ (编译器不会为你做初始化的工作！) 上述代码在测试的过程中，由于自身疏忽，如果构造函数中没有对成员变量初始化时，成员变量的值为随机数，因此不安全会出现很奇怪的错误，为了规范编程的要求，避免不必要的错误发生，在构造函数中一定要初始化。
+
+
+--
+
+###non-const调用const 避免代码重复
+
+例如 
+
+``` c++
+class TextBlock{
+public:
+    static const int Num = 30;
+    char text[Num];
+public:
+    char& operator[](std::size_t position) ;
+    const char& operator[](std::size_t position) const;
+};
+
+char& TextBlock::operator[](std::size_t position)  {
+    text[position]++;
+    //边界检验（bounds checking）
+    //志记数据访问(log access data)
+    //检验数据完整性(verify data integrity)
+    return text[position];
+}
+const char &TextBlock::operator[](std::size_t position) const {
+    //text[position]++;
+    //边界检验（bounds checking）
+    //志记数据访问(log access data)
+    //检验数据完整性(verify data integrity)
+    return text[position];
+}
+```
+在上述代码中，const 和 non－const 的函数实现中都出现了，同样的内容，在规模较大的项目中，编译时间过长，维护，代码膨胀都是令人很头疼的问题。解决上述问题的方式就是常量转型 __(casting away constness)__。具体实现如下：
+
+``` c++
+class TextBlock{
+public:
+    static const int Num = 30;
+    char text[Num];
+public:
+    char& operator[](std::size_t position) ;
+    const char& operator[](std::size_t position) const;
+};
+
+char& TextBlock::operator[](std::size_t position)  {
+    return const_cast<char&>( //将op[]返回值的const转除
+            static_cast<const TextBlock&>(*this)[position] //为*this 加上const 然后调用const op[]。 
+    );
+    
+}
+const char &TextBlock::operator[](std::size_t position) const {
+    //text[position]++;
+    //边界检验（bounds checking）
+    //志记数据访问(log access data)
+    //检验数据完整性(verify data integrity)
+    return text[position];
+}
+```
+__Singleton__ 模式
+上述实现过程中有两个转型操作：
+
++ 将__*this__  从原始类型TextBlock& 转型为 const TextBlock& （转型类似强制类型转换）用来调用 operator[ ] const版本。
++ 从const operator[ ]的返回值中移除const
+
+注意：反向操作是不允许的：令const 版本调用 non-const 版本。因为const 成员函数承诺绝不改变其对象的逻辑状态(logical state)。
+
+--
+###请记住
++ 将某些东西声明为const可以帮助编译器报错。
++ 编译器强制实施bitwise constness。但是编写程序是应该使用 “概念上的常量性” （__conceptual constness__）。
++ 当const 和 non-const 成员函数有着实质等价的实现时，令non-const 版本调用const版本，可以避免代码的重复。
+
+--
+###确定对象被使用前已先被初始化。
+为了避免随机初始化的值，导致不可测知的程序行为。我们应当在对象，变量在使用之前保证其已经被初始化。这样初始化的责任就落到了构造函数(__constructors__)
+
+构造函数的初始化分为 __赋值(assignment)__ 和 __初始化(initialization)__ 通常来说在构造函数中使用 __成员初值列(member initialization list)__ 在效率上面更优于赋值初始化。
+
+``` c++
+class PhoneNumber {
+};
+
+class ABEntry {
+private:
+    std::string theName;
+    std::string theAddress;
+    std::list<PhoneNumber> thePhones;
+    int numTimesConsulted;
+public:
+    ABEntry();
+
+    ABEntry(const std::string &name, const std::string &address,
+            const std::list<PhoneNumber> &phones);
+};
+
+ABEntry::ABEntry(const std::string &name, const std::string &address,
+                 const std::list<PhoneNumber> &phones)
+        : theName(name), theAddress(address), thePhones(phones), numTimesConsulted(0) {}
+
+ABEntry::ABEntry() : theName(), theAddress(), thePhones(), numTimesConsulted(0)
+{ }
+```
+
+上述代码是在构造函数中用 __成员初值列(member initalization list)__  的方法去完成初始化的工作。相比如果用简单的赋值操作进行初始，这样效率要高。赋值初始化，要经过default 构造函数，然后调用 __copy assignment__ ，而成员初值列是单次调用copy 构造函数效率要高。在上述代码中  default 构造中对numTimesConsulted 成员做了显式的初始化。
+
+注：在成员初值列中初始化的顺序最好和 __内置型对象的声明__ 顺序一致。
+
+--
+
+### static 对象使用初始化顺序问题
+
+所谓static 对象，其寿命从被构造出来直到程序结束为止，因此 stack 和 heap-based对象都被排除。
+
++ __local static__ :包括global对象，定义于namespace作用域内的对象，在class内，在函数内，以及在file作用域内被声明为static的对象。
++ __non-local static__ :其他,程序结束时static对象会被自动销毁，也就是它们的析构函数会在main()函数结束时被自动调用。
+
+编译单元 (__translation unit__) :是指产出单一目标文件（__single object file__）的那些源码。基本上它是单一源码文件加上它所含入的头文件。
+
+问题:多个源码文件，每一个至少一个non-local static。当某个源码文件中的non-local static 的动作使用了另一个编译单元中的的某个对象，但是这个对象并 __未初始化__ 因此出现问题。
+
+``` c++
+class FileSystem{
+public:
+    std::size_t numDisk() const;
+};
+
+std::size_t FileSystem::numDisk() const {
+    return 0;
+}
+extern FileSystem tfs;
+FileSystem& tfs1(){    //这个函数用来替换tfs对象
+    static FileSystem fs; //它在FileSystem class中可能是个static。
+    return fs; //定义并初始化一个local static对象 并返回一个reference指向上述对象。
+}
+class Directory{
+public:
+    Directory();
+
+};
+
+Directory::Directory() {
+    std::size_t disks = tfs1().numDisk();
+}
+extern Directory tempDir;
+Directory& tempDir1(){
+    static Directory td; //同上
+    return td;
+}
+```
+解决方法如上所示。Singleton 模式。
+__C++保证，函数内的local static对象会在“该函数被调用期间” “首次遇上该对象之定义式”时被初始化。
+
+注意：任何一种non-const static对象，不论它是local还是non-local，在多线程的环境下“等待某种事情发生”都会有麻烦，处理这个麻烦的做法是: __在程序单线程启动阶段(single-threaded startup portion )手工调用所有reference－returning函数(也就是上述代码实现),这可以消除与初始化有关的“竞速形势”(race conditions)。__
+
++ 为内置对象进行手工初始化。
++ 使用构造函数的__成员初值列(member initialization list)__。
++ 为了免除 __"跨编译单元之初始化次序"__ 问题，请以local static 对象替换 non-static对象。具体实现是 reference-returning 函数。
+
+此处较难理解，在以后的编程中用到深究。
+##总结
+const 对于c++规范编程，效率方面十分重要。需要熟练掌握。第1章的学习笔记结束，相关代码通过测试同步[github Dream_going](https://github.com/Dreamgoing)。近期更新之后的学习笔记。
+
+
+
 
 
 
